@@ -42,7 +42,17 @@ class StudentController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $student = Student::find($id);
+
+        $request->validate([
+            'firstname' => 'required',
+            'lastname' => 'required',
+            'section' => 'required',
+        ]);
+
+        $student->update($request->all());
+
+        return $student;
     }
 
     /**
@@ -50,6 +60,14 @@ class StudentController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        Student::destroy($id);
+        return ['message' => 'Student successfully deleted!'];
+    }
+
+    public function search($name)
+    {
+        return Student::where('firstname', 'like', '%' . $name . '%')
+            ->orWhere('lastname', 'like', '%' . $name . '%')
+            ->get();
     }
 }
