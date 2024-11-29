@@ -24,9 +24,32 @@ class StudentController extends Controller
             'firstname' => 'required',
             'lastname' => 'required',
             'section' => 'required',
+            'image' => 'required|mimes:jpg,jpeg,png,bmp|max:2048',
         ]);
 
-        return Student::create($request->all());
+        $imageName = '';
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $image->store('images', $imageName);
+            $imageName = time() . '-' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('images/uploads'), $imageName);
+        }
+
+        $student = Student::create([
+            'firstname' => $request->firstname,
+            'lastname' => $request->lastname,
+            'section' => $request->section,
+            'image' => $imageName,
+        ]);
+
+        return response()->json(
+            [
+                'message' => 'Student created successfully!',
+                'student' => $student,
+            ],
+            201,
+        );
     }
 
     /**
@@ -42,17 +65,62 @@ class StudentController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // Find the student by ID
         $student = Student::find($id);
 
+        if (!$student) {
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+
+        // Validate the incoming request
         $request->validate([
-            'firstname' => 'required',
-            'lastname' => 'required',
-            'section' => 'required',
+            'firstname' => 'required|string',
+            'lastname' => 'required|string',
+            'section' => 'required|string',
+            'image' => 'nullable|mimes:jpg,jpeg,png,bmp|max:2048',
         ]);
 
-        $student->update($request->all());
+        // Store the current image name
+        $oldImageName = $student->image;
 
-        return $student;
+        // Initialize new image name
+        $imageName = $oldImageName;
+
+        // Check if a new image is uploaded
+        if ($request->hasFile('image')) {
+            // If a new image is uploaded, delete the old image if it exists
+            if ($oldImageName) {
+                $oldImagePath = public_path('images/uploads/' . $oldImageName);
+
+                if (file_exists($oldImagePath)) {
+                    unlink($oldImagePath); // Delete the old image
+                }
+            }
+
+            // Process the new image
+            $image = $request->file('image');
+            $imageName = time() . '-' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('images/uploads'), $imageName);
+        }
+
+        // Prepare data for update
+        $data = [
+            'firstname' => $request->firstname,
+            'lastname' => $request->lastname,
+            'section' => $request->section,
+            'image' => $imageName, // Update with new image name
+        ];
+
+        // Update the student record
+        $student->update($data);
+
+        return response()->json(
+            [
+                'message' => 'Student updated successfully!',
+                'student' => $student,
+            ],
+            200,
+        );
     }
 
     /**
